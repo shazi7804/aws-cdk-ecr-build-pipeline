@@ -1,0 +1,27 @@
+version: 0.2
+env:
+  variables:
+    ECR_URI: "026625820024.dkr.ecr.us-east-1.amazonaws.com/model-image-repo"
+phases:
+  install: 
+    runtime-versions: 
+      docker: 18
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR.... 
+      - aws --version
+      - $(aws ecr get-login --no-include-email --region us-east-1)
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image...          
+      - docker build -t mlops:latest .
+      - docker tag mlops:latest ${ECR_URI:}:latest
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker image...
+      - docker push $ECR_URI
+artifacts:
+  files:
+    - hello
