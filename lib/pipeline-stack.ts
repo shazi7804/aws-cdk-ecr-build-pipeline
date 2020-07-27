@@ -10,12 +10,6 @@ import sns_subscriptions = require("@aws-cdk/aws-sns-subscriptions");
 import targets = require("@aws-cdk/aws-events-targets");
 import { MakeDirectoryOptions } from "fs";
 
-// const ecr_repo = 'demo-image-repo'
-// const codecommit_repo = 'demo-source-repo'
-// const codecommit_branch = 'master';
-// const codebuild_project = 'demo-build'
-// const codepipeline_name = 'demo-pipeline'
-// const notifications_email = 'shazi7804@gmail.com'
 export interface PipelineStackProps extends cdk.StackProps {
   readonly ecr_repo: string;
   readonly codecommit_repo: string;
@@ -136,17 +130,19 @@ export class PipelineStack extends cdk.Stack {
     /**
      * SNS: Monitor pipeline state change then notifiy
     **/
-    const pipelineSnsTopic = new sns.Topic(this, 'DemoPipelineStageChange');
-    pipelineSnsTopic.addSubscription(new sns_subscriptions.EmailSubscription(props.notifications_email))
-    pipeline.onStateChange("PipelineStateChange", {
-      target: new targets.SnsTopic(pipelineSnsTopic), 
-      description: 'Listen for codepipeline change events',
-      eventPattern: {
-        detail: {
-          state: [ 'FAILED', 'SUCCEEDED', 'STOPPED' ]
+    if ( props.notifications_email ) {
+      const pipelineSnsTopic = new sns.Topic(this, 'DemoPipelineStageChange');
+      pipelineSnsTopic.addSubscription(new sns_subscriptions.EmailSubscription(props.notifications_email))
+      pipeline.onStateChange("PipelineStateChange", {
+        target: new targets.SnsTopic(pipelineSnsTopic), 
+        description: 'Listen for codepipeline change events',
+        eventPattern: {
+          detail: {
+            state: [ 'FAILED', 'SUCCEEDED', 'STOPPED' ]
+          }
         }
-      }
-    });
+      });
+    }
 
     /**
      * Output: 

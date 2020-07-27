@@ -18,6 +18,8 @@ git config --global credential.helper '!aws codecommit credential-helper $@'
 git config --global credential.UseHttpPath true
 ```
 
+> If you clone repository get return 403, remove `git-codecommit.${REGION}.amazonaws.com` of `Keychain Access` on macOS.
+
 3. Git clone of CodeCommit HTTPS URI
 
 ```

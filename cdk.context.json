@@ -6,7 +6,5 @@
     "codecommit_branch": "master",
     "codebuild_project": "demo-build",
     "codepipeline_name": "demo-pipeline",
-    "notifications_email": "shazi7804@gmail.com",
-    "region": "us-east-1"
+    "notifications_email": ""
 }
-  
