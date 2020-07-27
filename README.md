@@ -4,7 +4,20 @@ This repository is a CI/CD pipeline of ECR image build.
 
 ## Change your own
 
-If your want notifications email when CodePipeline stage changes.
+- Change repo, branch and more name.
+
+```
+# cdk.context.json
+{
+    "ecr_repo": "...",
+    "codecommit_repo": "...",
+    "codecommit_branch": "master",
+    "codebuild_project": "...",
+    "codepipeline_name": "...",
+}
+```
+
+- If your want notifications email when CodePipeline stage changes.
 
 ```
 # add email of `notifications_email` in cdk.context.json
@@ -31,3 +44,4 @@ cdk --profile another diff
 ```
 AWS_REGION=us-west-1 cdk diff
 ```
+
