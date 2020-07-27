@@ -22,7 +22,7 @@ This repository is a CI/CD pipeline of ECR image build.
 ```
 # add email of `notifications_email` in cdk.context.json
 {
-    "notifications_email": "example@gmail.com"
+    "notifications_email": "<your_own_email>"
 }
 ```
 
