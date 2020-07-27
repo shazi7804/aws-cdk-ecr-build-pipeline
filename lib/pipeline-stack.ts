@@ -5,41 +5,52 @@ import codepipeline = require("@aws-cdk/aws-codepipeline");
 import codepipeline_actions = require("@aws-cdk/aws-codepipeline-actions");
 import iam = require("@aws-cdk/aws-iam");
 import ecr = require("@aws-cdk/aws-ecr");
-import s3 = require("@aws-cdk/aws-s3");
+import sns = require("@aws-cdk/aws-sns");
+import sns_subscriptions = require("@aws-cdk/aws-sns-subscriptions");
+import targets = require("@aws-cdk/aws-events-targets");
+import { MakeDirectoryOptions } from "fs";
 
-const ecr_repo = 'model-image-repo'
-const codecommit_repo = 'model-repo'
-const codecommit_branch = 'master';
-const codebuild_project = 'model-build'
-const codepipeline_name = 'model-pipeline'
+// const ecr_repo = 'demo-image-repo'
+// const codecommit_repo = 'demo-source-repo'
+// const codecommit_branch = 'master';
+// const codebuild_project = 'demo-build'
+// const codepipeline_name = 'demo-pipeline'
+// const notifications_email = 'shazi7804@gmail.com'
+export interface PipelineStackProps extends cdk.StackProps {
+  readonly ecr_repo: string;
+  readonly codecommit_repo: string;
+  readonly codecommit_branch: string;
+  readonly codebuild_project: string;
+  readonly codepipeline_name: string;
+  readonly notifications_email: string;
+}
 
-
-export class ModelPipelineStack extends cdk.Stack {
-  constructor(scope: cdk.App, id: string, props?: cdk.StackProps) {
+export class PipelineStack extends cdk.Stack {
+  constructor(scope: cdk.App, id: string, props: PipelineStackProps) {
     super(scope, id, props);
 
     /** 
-     * ecr: create repository
+     * ECR: create repository
     **/
-    const ecrRepository = new ecr.Repository(this, "ModelImageRepo", {
-      repositoryName: ecr_repo
-    }); 
+    const ecrRepository = new ecr.Repository(this, "DemoImageRepo", {
+      repositoryName: props.ecr_repo
+    });
 
     /** 
-     * codecommit: create repository
+     * CodeCommit: create repository
     **/ 
-    const codecommitRepository = new codecommit.Repository(this, "ModelSourceRepo", {
-      repositoryName: codecommit_repo
+    const codecommitRepository = new codecommit.Repository(this, "DemoSourceRepo", {
+      repositoryName: props.codecommit_repo
     });
 
 
     /**
-     * codebuild: 
+     * CodeBuild: 
      * 1. create codebuild project
-     * 2. create iam.PolicyStatement
+     * 2. create policy of ECR and Codecommit
     **/ 
-    const codebuildProject = new codebuild.PipelineProject(this, "ModelBuild", {
-      projectName: codebuild_project,
+    const codebuildProject = new codebuild.PipelineProject(this, "DemoBuild", {
+      projectName: props.codebuild_project,
       environment: {
         computeType: codebuild.ComputeType.SMALL,
         buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2_3,
@@ -56,30 +67,49 @@ export class ModelPipelineStack extends cdk.Stack {
         }
       }
     });
-
-    const codeBuildPolicy = new iam.PolicyStatement();
-    codeBuildPolicy.addResources(codecommitRepository.repositoryArn)
-    codeBuildPolicy.addActions(
-        "codecommit:ListBranches",
-        "codecommit:ListRepositories",
-        "codecommit:BatchGetRepositories",
-        "codecommit:GitPull"
-      )
-    codebuildProject.addToRolePolicy(
-      codeBuildPolicy
+    // codebuild policy of codecommit pull source code.
+    const codeBuildPolicyOfcodeCommit = new iam.PolicyStatement();
+    codeBuildPolicyOfcodeCommit.addResources(codecommitRepository.repositoryArn)
+    codeBuildPolicyOfcodeCommit.addActions(
+      "codecommit:ListBranches",
+      "codecommit:ListRepositories",
+      "codecommit:BatchGetRepositories",
+      "codecommit:GitPull"
     );
+    codebuildProject.addToRolePolicy(
+      codeBuildPolicyOfcodeCommit,
+    );
+    // codebuild policy of ecr build
+    const codeBuildPolicyEcr = new iam.PolicyStatement();
+    codeBuildPolicyEcr.addAllResources()
+    codeBuildPolicyEcr.addActions(
+      "ecr:GetAuthorizationToken",
+      "ecr:InitiateLayerUpload",
+      "ecr:UploadLayerPart",
+      "ecr:CompleteLayerUpload",
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:PutImage"
+    )
+    codebuildProject.addToRolePolicy(codeBuildPolicyEcr);
 
-    // codepipeline to pull in codecommit repo as the pipeline source
+
+    /**
+     * CodePipeline: 
+     * 1. create codebuild project
+     * 2. create policy of ECR and Codecommit
+    **/
+
+    // trigger of `CodeCommitTrigger.POLL`
     const sourceOutput = new codepipeline.Artifact();
     const sourceAction = new codepipeline_actions.CodeCommitSourceAction({
       actionName: "Source-CodeCommit",
-      branch: codecommit_branch,
+      branch: props.codecommit_branch,
       trigger: codepipeline_actions.CodeCommitTrigger.POLL,
       repository: codecommitRepository,
       output: sourceOutput
     });
 
-    // CodePipeline with codebuild
+    // when codecommit input then action of codebuild
     const buildOutput = new codepipeline.Artifact();
     const buildAction = new codepipeline_actions.CodeBuildAction({
       actionName: "Build",
@@ -90,8 +120,9 @@ export class ModelPipelineStack extends cdk.Stack {
       project: codebuildProject
     });
 
+    // create pipeline, and then add both codecommit and codebuild  
     const pipeline = new codepipeline.Pipeline(this, "Pipeline", {
-      pipelineName: codepipeline_name
+      pipelineName: props.codepipeline_name
     });
     pipeline.addStage({
       stageName: "Source",
@@ -101,19 +132,39 @@ export class ModelPipelineStack extends cdk.Stack {
       stageName: "Build",
       actions: [buildAction]
     });
-    
-    new cdk.CfnOutput(this, 'ModelRepositoryCloneUrlHttp', {
-      description: 'Model Repository CloneUrl HTTP',
+
+    /**
+     * SNS: Monitor pipeline state change then notifiy
+    **/
+    const pipelineSnsTopic = new sns.Topic(this, 'DemoPipelineStageChange');
+    pipelineSnsTopic.addSubscription(new sns_subscriptions.EmailSubscription(props.notifications_email))
+    pipeline.onStateChange("PipelineStateChange", {
+      target: new targets.SnsTopic(pipelineSnsTopic), 
+      description: 'Listen for codepipeline change events',
+      eventPattern: {
+        detail: {
+          state: [ 'FAILED', 'SUCCEEDED', 'STOPPED' ]
+        }
+      }
+    });
+
+    /**
+     * Output: 
+     * - CodeCommit clone path of HTTP and SSH
+     * - ECR Repository URI
+    **/
+    new cdk.CfnOutput(this, 'CodeCommitCloneUrlHttp', {
+      description: 'CodeCommit Repo CloneUrl HTTP',
       value: codecommitRepository.repositoryCloneUrlHttp
     });
 
-    new cdk.CfnOutput(this, 'ModelRepositoryCloneUrlSsh', {
-      description: 'Model Repository CloneUrl SSH',
+    new cdk.CfnOutput(this, 'CodeCommitCloneUrlSsh', {
+      description: 'CodeCommit Repo CloneUrl SSH',
       value: codecommitRepository.repositoryCloneUrlSsh
     });
 
-    new cdk.CfnOutput(this, 'ModelImageRepositoryUri', {
-      description: 'Model Image Repository URI',
+    new cdk.CfnOutput(this, 'EcrRepositoryUri', {
+      description: 'ECR Repository URI',
       value: ecrRepository.repositoryUri
     });
   }

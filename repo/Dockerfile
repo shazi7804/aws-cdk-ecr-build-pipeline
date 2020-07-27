@@ -1,15 +1,10 @@
-FROM alpine:latest
+FROM python:3.7-alpine
 
 # File Author / Maintainer
 MAINTAINER "shazi7804" <shazi7804@gmail.com>
 
-# Install dependencies
-RUN apk update && apk add curl python py-pip jq vim
-
-# Install bottle if running the python file directly
-RUN pip install flask
-
-ADD app.py /srv
+COPY . /srv
+RUN pip install -r /srv/requirements.txt
 
 CMD [ "sh", "-c", "python /srv/app.py" ]
 

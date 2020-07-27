@@ -1,7 +1,7 @@
 version: 0.2
 env:
   variables:
-    ECR_URI: "026625820024.dkr.ecr.us-east-1.amazonaws.com/model-image-repo"
+    ECR_URI: "026625820024.dkr.ecr.us-east-1.amazonaws.com/demo-image-repo"
 phases:
   install: 
     runtime-versions: 
@@ -16,7 +16,7 @@ phases:
       - echo Build started on `date`
       - echo Building the Docker image...          
       - docker build -t mlops:latest .
-      - docker tag mlops:latest ${ECR_URI:}:latest
+      - docker tag mlops:latest ${ECR_URI}:latest
   post_build:
     commands:
       - echo Build completed on `date`
@@ -24,4 +24,5 @@ phases:
       - docker push $ECR_URI
 artifacts:
   files:
-    - hello
+    - '**/*'
+  name: mlops-${CODEBUILD_BUILD_NUMBER}-${CODEBUILD_SOURCE_VERSION}
