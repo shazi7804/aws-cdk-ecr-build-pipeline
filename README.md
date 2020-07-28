@@ -29,6 +29,7 @@ This repository is a CI/CD pipeline of ECR image build.
 ## Deploy Stack
 
 ```
+npm install
 cdk diff
 cdk deploy
 ```
