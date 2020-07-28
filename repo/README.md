@@ -53,7 +53,7 @@ git push origin master
 
 - Check pipeline build succeeded
 
-![](../img/pipeline.png)
+![](../img/codepipeline.png)
 
 - Check ECR build image tag `latest`
 
