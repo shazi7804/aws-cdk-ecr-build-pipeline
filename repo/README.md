@@ -49,13 +49,14 @@ git commit -am "initial commit"
 git push origin master
 ```
 
-6. Check pipeline build succeeded
+6. Check 
 
-- CodePieline build succeeded
+- Check pipeline build succeeded
 
-![](../img/demo-pipeline.png)
+![](../img/pipeline.png)
 
 - Check ECR build image tag `latest`
 
 ![](../img/ecr-image.png)
+
 
