@@ -30,9 +30,10 @@ git clone https://git-codecommit.us-east-1.amazonaws.com/v1/repos/demo-source-re
 
 ```
 cp -R repo/* demo-source-repo/
+cd demo-source-repo/
 ```
 
-then modify own `ECR_URI` path of buildspec.yml
+then modify own `ECR_URI` path of `buildspec.yml`
 
 ```
 env:
